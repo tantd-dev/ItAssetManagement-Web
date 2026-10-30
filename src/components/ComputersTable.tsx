@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 import { AssetDrawer } from "@/components/AssetDrawer";
 import { DataTable } from "@/components/DataTable";
 import { DeviceTag } from "@/components/DeviceTag";
+import { EmployeePopover } from "@/components/EmployeePopover";
 import { useAction } from "@/hooks/useAction";
 import { downloadCsv } from "@/lib/csv";
 import { ASSET_STATUS } from "@/lib/constants";
@@ -215,7 +216,13 @@ export function ComputersTable() {
       title: "Người dùng",
       render: (_, r) =>
         r.holder ? (
-          r.holder.fullName
+          <EmployeePopover
+            employee={r.holder}
+            since={r.assignedAt}
+            devices={r.holderDevices}
+          >
+            {r.holder.fullName}
+          </EmployeePopover>
         ) : (
           <Typography.Text type="secondary">Chưa cấp</Typography.Text>
         ),

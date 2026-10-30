@@ -9,7 +9,7 @@ import {
   type ActionType,
   type ProColumns,
 } from "@ant-design/pro-components";
-import { Button, Popconfirm, Space } from "antd";
+import { Button, Flex, Form, Popconfirm, Space, Tag, theme } from "antd";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { DataTable } from "@/components/DataTable";
@@ -29,9 +29,46 @@ const NAME_HINTS: Record<PcComponentType, string> = {
   cpu: "Core i7-12700",
   gpu: "GeForce RTX 3060 12GB",
   ram: "16GB DDR4 3200",
-  mainboard: "B660M Pro",
+  mainboard: "B660M PRO",
   storage: "980 Pro",
 };
+
+/** Common sizes offered as one-click chips next to the capacity input. */
+const CAPACITY_PRESETS: Partial<Record<PcComponentType, number[]>> = {
+  ram: [4, 8, 16, 32, 64, 128],
+  storage: [128, 256, 512, 1024, 2048, 4096],
+};
+
+/** Chips that fill the "capacityGb" field of the surrounding form. */
+function CapacityPresets({ presets }: { presets: number[] }) {
+  const form = Form.useFormInstance();
+  const value = Form.useWatch("capacityGb", form);
+  const { token } = theme.useToken();
+  return (
+    <Flex wrap gap={6} style={{ marginTop: 8 }}>
+      {presets.map((gb) => (
+        <Tag.CheckableTag
+          key={gb}
+          checked={value === gb}
+          style={{
+            border: `1px solid ${value === gb ? token.colorPrimary : token.colorBorder}`,
+            borderRadius: 999,
+            paddingInline: 10,
+          }}
+          onChange={() => {
+            form.setFieldValue("capacityGb", gb);
+            void form.validateFields(["capacityGb"]);
+          }}
+        >
+          {fmtCapacity(gb)}
+        </Tag.CheckableTag>
+      ))}
+    </Flex>
+  );
+}
+
+/** Mainboard names are stored upper-case (e.g. "B660M PRO"). */
+const upperCase = (v?: string) => v?.toUpperCase();
 
 /** CRUD table for one kind of PC part (CPU, GPU, RAM, mainboard, storage). */
 export function PcComponentsTable({ type }: { type: PcComponentType }) {
@@ -171,6 +208,7 @@ export function PcComponentsTable({ type }: { type: PcComponentType }) {
           label="Tên"
           placeholder={NAME_HINTS[type]}
           rules={[{ required: true, message: "Nhập tên" }]}
+          normalize={type === "mainboard" ? upperCase : undefined}
         />
         <ProFormText
           name="manufacturer"
@@ -191,6 +229,7 @@ export function PcComponentsTable({ type }: { type: PcComponentType }) {
             label="Dung lượng (GB)"
             min={1}
             rules={[{ required: true, message: "Nhập dung lượng" }]}
+            extra={<CapacityPresets presets={CAPACITY_PRESETS[type] ?? []} />}
           />
         )}
         <ProFormTextArea name="notes" label="Ghi chú" />

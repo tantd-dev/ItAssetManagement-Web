@@ -21,11 +21,17 @@ export const fmtCapacity = (gb?: number | null) =>
       ? `${gb / 1024} TB`
       : `${gb} GB`;
 
-/** e.g. "Intel Core i7-12700" or "Samsung 980 · NVMe 512 GB". */
+/**
+ * e.g. "Intel Core i7-12700", "Kingston Fury DDR4 · 16 GB" or
+ * "Samsung 980 · NVMe 512 GB".
+ */
 export function pcComponentLabel(p: PcComponent) {
   const name = [p.manufacturer, p.name].filter(Boolean).join(" ");
   if (p.componentType === "storage") {
     return `${name} · ${p.storageType ?? ""} ${fmtCapacity(p.capacityGb)}`;
+  }
+  if (p.componentType === "ram") {
+    return `${name} · ${fmtCapacity(p.capacityGb)}`;
   }
   return name;
 }

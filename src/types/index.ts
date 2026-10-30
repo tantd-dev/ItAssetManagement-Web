@@ -227,6 +227,10 @@ export interface ComputerRow {
   location: Location | null;
   pcConfiguration: PcConfiguration | null;
   holder: Employee | null;
+  /** When the current holder received this computer. */
+  assignedAt: string | null;
+  /** Everything the holder currently has, this computer included. */
+  holderDevices: Asset[];
   /** Displays currently held by the same employee. */
   monitors: Asset[];
   /** Other non-PC devices held by the same employee. */

@@ -8,37 +8,44 @@ import {
 } from "@ant-design/pro-components";
 import { Button, Popconfirm, Space } from "antd";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { DataTable } from "@/components/DataTable";
 import { useAction } from "@/hooks/useAction";
 import { tableRequest } from "@/lib/table";
 import type { CodeName, ListParams, Page } from "@/types";
 
-interface Service {
-  list: (params?: ListParams) => Promise<Page<CodeName>>;
-  create: (body: { code: string; name: string }) => Promise<unknown>;
-  update: (id: string, body: { code: string; name: string }) => Promise<unknown>;
+interface Service<T extends CodeName> {
+  list: (params?: ListParams) => Promise<Page<T>>;
+  create: (body: Partial<T> & { code: string; name: string }) => Promise<unknown>;
+  update: (id: string, body: Partial<T>) => Promise<unknown>;
   remove: (id: string) => Promise<void>;
 }
 
-/** CRUD table for the simple "code + name" lookup resources. */
-export function CodeNameTable({
+/** CRUD table for the "code + name" lookup resources, with optional extras. */
+export function CodeNameTable<T extends CodeName = CodeName>({
   service,
   entity,
+  extraColumns = [],
+  extraFields,
 }: {
-  service: Service;
+  service: Service<T>;
   /** Lower-case noun used in labels, e.g. "phòng ban". */
   entity: string;
+  /** Additional table columns for resource-specific fields. */
+  extraColumns?: ProColumns<T>[];
+  /** Additional form fields; their names must match T's keys. */
+  extraFields?: ReactNode;
 }) {
   const actionRef = useRef<ActionType>(null);
   const run = useAction();
   // undefined = closed, null = creating, object = editing
-  const [editing, setEditing] = useState<CodeName | null | undefined>();
+  const [editing, setEditing] = useState<T | null | undefined>();
 
-  const columns: ProColumns<CodeName>[] = [
+  const columns: ProColumns<T>[] = [
     { title: "Từ khóa", dataIndex: "search", hideInTable: true },
     { title: "Mã", dataIndex: "code", sorter: true, search: false },
     { title: "Tên", dataIndex: "name", sorter: true, search: false },
+    ...extraColumns,
     {
       title: "Thao tác",
       valueType: "option",
@@ -68,7 +75,7 @@ export function CodeNameTable({
 
   return (
     <>
-      <DataTable<CodeName>
+      <DataTable<T>
         actionRef={actionRef}
         columns={columns}
         request={tableRequest(service.list)}
@@ -83,11 +90,11 @@ export function CodeNameTable({
           </Button>,
         ]}
       />
-      <ModalForm<{ code: string; name: string }>
+      <ModalForm<Partial<T> & { code: string; name: string }>
         title={editing ? `Sửa ${entity}` : `Thêm ${entity}`}
         width={440}
         open={editing !== undefined}
-        initialValues={editing ?? {}}
+        initialValues={(editing ?? {}) as Partial<T>}
         modalProps={{ destroyOnHidden: true, onCancel: () => setEditing(undefined) }}
         onOpenChange={(open) => !open && setEditing(undefined)}
         onFinish={async (values) => {
@@ -114,6 +121,7 @@ export function CodeNameTable({
           rules={[{ required: true, message: "Nhập tên" }]}
           fieldProps={{ maxLength: 255 }}
         />
+        {extraFields}
       </ModalForm>
     </>
   );

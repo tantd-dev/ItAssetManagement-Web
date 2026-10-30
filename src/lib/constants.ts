@@ -1,4 +1,12 @@
-import type { AssetStatus, MaintenanceStatus } from "@/types";
+import type { AssetStatus, MaintenanceStatus, PcComponentType } from "@/types";
+
+export const PC_COMPONENT_TYPES: Record<PcComponentType, string> = {
+  cpu: "CPU",
+  gpu: "GPU",
+  ram: "RAM",
+  mainboard: "Mainboard",
+  storage: "Ổ lưu trữ",
+};
 
 export const ASSET_STATUS: Record<
   AssetStatus,

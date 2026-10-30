@@ -5,6 +5,8 @@ import type {
   CodeName,
   Department,
   Location,
+  PcComponent,
+  PcComponentType,
 } from "@/types";
 import { createCrud } from "./crud";
 
@@ -16,9 +18,25 @@ export const departmentService = createCrud<Department, CodeNameInput>(
 export const locationService = createCrud<Location, CodeNameInput>(
   "/locations",
 );
-export const categoryService = createCrud<AssetCategory, CodeNameInput>(
-  "/asset-categories",
-);
+export const categoryService = createCrud<
+  AssetCategory,
+  CodeNameInput & { hasPcConfig?: boolean; isDisplay?: boolean }
+>("/asset-categories");
+
+export interface PcComponentInput {
+  componentType: PcComponentType;
+  name: string;
+  manufacturer?: string | null;
+  capacityGb?: number | null;
+  storageType?: string | null;
+  notes?: string | null;
+}
+
+export const pcComponentService = createCrud<
+  PcComponent,
+  PcComponentInput,
+  Partial<Omit<PcComponentInput, "componentType">>
+>("/pc-components");
 
 export interface AssetModelInput {
   categoryId: string;

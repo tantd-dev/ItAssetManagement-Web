@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import type { Asset, PcStorageDevice } from "@/types";
+import type { Asset } from "@/types";
 import { createCrud } from "./crud";
 
 export interface AssetInput {
@@ -16,12 +16,13 @@ export interface AssetInput {
   pcConfiguration?: PcConfigurationInput;
 }
 
+/** Every part is a pc_components id; null clears it. */
 export interface PcConfigurationInput {
-  cpu?: string;
-  gpu?: string;
-  ramGb?: number;
-  mainboard?: string;
-  storageDevices?: PcStorageDevice[];
+  cpuId?: string | null;
+  gpuId?: string | null;
+  ramId?: string | null;
+  mainboardId?: string | null;
+  storageDevices?: { componentId: string; label?: string }[];
 }
 
 export const assetService = {

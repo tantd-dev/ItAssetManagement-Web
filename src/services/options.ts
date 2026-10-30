@@ -1,10 +1,12 @@
-import type { AssetStatus } from "@/types";
+import { pcComponentLabel } from "@/lib/format";
+import type { AssetStatus, PcComponentType } from "@/types";
 import { assetService } from "./assets";
 import {
   categoryService,
   departmentService,
   locationService,
   modelService,
+  pcComponentService,
 } from "./catalog";
 import { employeeService } from "./employees";
 
@@ -34,12 +36,32 @@ export const locationOptions = async ({
     (l) => ({ value: l.id, label: `${l.code} - ${l.name}` }),
   );
 
+/** Options also carry `hasPcConfig` so forms can react to the choice. */
 export const categoryOptions = async ({
   keyWords,
-}: SearchParams = {}): Promise<Option[]> =>
+}: SearchParams = {}): Promise<(Option & { hasPcConfig: boolean })[]> =>
   (await categoryService.list({ pageSize: LIMIT, search: keyWords })).data.map(
-    (c) => ({ value: c.id, label: `${c.code} - ${c.name}` }),
+    (c) => ({
+      value: c.id,
+      label: `${c.code} - ${c.name}`,
+      hasPcConfig: c.hasPcConfig,
+    }),
   );
+
+export const pcComponentOptions =
+  (type: PcComponentType) =>
+  async ({ keyWords }: SearchParams = {}): Promise<Option[]> =>
+    (
+      await pcComponentService.list({
+        type,
+        pageSize: LIMIT,
+        search: keyWords,
+      })
+    ).data.map((p) => ({ value: p.id, label: pcComponentLabel(p) }));
+
+/** Brands in use by asset models. */
+export const manufacturerOptions = async (): Promise<Option[]> =>
+  (await modelService.manufacturers()).map((m) => ({ value: m, label: m }));
 
 export const modelOptions = async ({
   keyWords,

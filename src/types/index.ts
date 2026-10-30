@@ -19,7 +19,24 @@ export interface CodeName {
 }
 export type Department = CodeName;
 export type Location = CodeName;
-export type AssetCategory = CodeName;
+export interface AssetCategory extends CodeName {
+  /** Assets of this category carry a PC hardware configuration. */
+  hasPcConfig: boolean;
+  /** Assets of this category are displays (monitor column of the overview). */
+  isDisplay: boolean;
+}
+
+export type PcComponentType = "cpu" | "gpu" | "ram" | "mainboard" | "storage";
+
+export interface PcComponent {
+  id: string;
+  componentType: PcComponentType;
+  name: string;
+  manufacturer: string | null;
+  capacityGb: number | null;
+  storageType: string | null;
+  notes: string | null;
+}
 
 export type AssetStatus =
   | "available"
@@ -60,18 +77,29 @@ export interface AssetModel {
 }
 
 export interface PcStorageDevice {
-  id?: string;
+  id: string;
+  componentId: string | null;
+  component?: PcComponent | null;
   storageType: string;
   capacityGb: number;
-  label?: string | null;
+  label: string | null;
 }
 
+/** Text columns are readable snapshots; *Id columns link to the catalog. */
 export interface PcConfiguration {
   id: string;
   cpu: string | null;
   gpu: string | null;
   ramGb: number | null;
   mainboard: string | null;
+  cpuId: string | null;
+  gpuId: string | null;
+  cpuComponent?: PcComponent | null;
+  gpuComponent?: PcComponent | null;
+  mainboardComponent?: PcComponent | null;
+  ramId: string | null;
+  mainboardId: string | null;
+  ramComponent?: PcComponent | null;
   storageDevices: PcStorageDevice[];
 }
 
@@ -187,4 +215,20 @@ export interface DashboardSummary {
   monthlyActivity: { month: string; assigned: number; returned: number }[];
   recentEvents: AssetEvent[];
   upcomingMaintenance: Maintenance[];
+}
+
+/** One row of the computer overview. */
+export interface ComputerRow {
+  id: string;
+  assetTag: string;
+  status: AssetStatus;
+  category: AssetCategory;
+  model: AssetModel | null;
+  location: Location | null;
+  pcConfiguration: PcConfiguration | null;
+  holder: Employee | null;
+  /** Displays currently held by the same employee. */
+  monitors: Asset[];
+  /** Other non-PC devices held by the same employee. */
+  otherDevices: Asset[];
 }

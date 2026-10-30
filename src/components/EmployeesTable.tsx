@@ -8,8 +8,9 @@ import {
   type ProColumns,
 } from "@ant-design/pro-components";
 import { Button, Drawer, Popconfirm, Space, Tabs } from "antd";
-import { Laptop, Pencil, Plus, Trash2 } from "lucide-react";
+import { Eye, Laptop, Pencil, Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
+import { AssetDrawer } from "@/components/AssetDrawer";
 import { DataTable } from "@/components/DataTable";
 import { StatusTag } from "@/components/StatusTag";
 import { useAction } from "@/hooks/useAction";
@@ -60,29 +61,47 @@ function EmployeeDrawer({
 }
 
 function HeldAssets({ employeeId }: { employeeId: string }) {
+  const [viewId, setViewId] = useState<string>();
   return (
-    <DataTable<AssignmentItem>
-      search={false}
-      options={false}
-      pagination={false}
-      request={async () => ({
-        data: await employeeService.currentAssets(employeeId),
-        success: true,
-      })}
-      columns={[
-        { title: "Mã tài sản", dataIndex: ["asset", "assetTag"] },
-        {
-          title: "Loại",
-          render: (_, r) =>
-            r.asset.model?.modelName ?? r.asset.category?.name ?? "—",
-        },
-        { title: "Phiếu", dataIndex: ["batch", "code"] },
-        {
-          title: "Ngày cấp",
-          render: (_, r) => fmtDate(r.batch.assignedAt),
-        },
-      ]}
-    />
+    <>
+      <DataTable<AssignmentItem>
+        search={false}
+        options={false}
+        pagination={false}
+        request={async () => ({
+          data: await employeeService.currentAssets(employeeId),
+          success: true,
+        })}
+        columns={[
+          { title: "Mã tài sản", dataIndex: ["asset", "assetTag"] },
+          {
+            title: "Loại",
+            render: (_, r) =>
+              r.asset.model?.modelName ?? r.asset.category?.name ?? "—",
+          },
+          { title: "Phiếu", dataIndex: ["batch", "code"] },
+          {
+            title: "Ngày cấp",
+            render: (_, r) => fmtDate(r.batch.assignedAt),
+          },
+          {
+            title: "Thao tác",
+            valueType: "option",
+            render: (_, r) => (
+              <Button
+                type="link"
+                size="small"
+                icon={<Eye size={14} />}
+                onClick={() => setViewId(r.assetId)}
+              >
+                Xem chi tiết thiết bị
+              </Button>
+            ),
+          },
+        ]}
+      />
+      <AssetDrawer assetId={viewId} onClose={() => setViewId(undefined)} />
+    </>
   );
 }
 

@@ -16,15 +16,23 @@ import { DataTable } from "@/components/DataTable";
 import { StatusTag } from "@/components/StatusTag";
 import { useAction } from "@/hooks/useAction";
 import { ASSET_STATUS, toValueEnum } from "@/lib/constants";
-import { fmtDate } from "@/lib/format";
 import { tableRequest } from "@/lib/table";
 import { assetService } from "@/services/assets";
 import {
   categoryOptions,
   employeeOptions,
   locationOptions,
+  manufacturerOptions,
+  modelOptions,
 } from "@/services/options";
 import type { Asset } from "@/types";
+
+const WARRANTY_ENUM = {
+  valid: { text: "Còn bảo hành" },
+  expiring: { text: "Hết hạn trong 30 ngày" },
+  expired: { text: "Đã hết bảo hành" },
+  none: { text: "Không có thông tin" },
+};
 
 const MANUAL_STATUS_ENUM = toValueEnum({
   available: ASSET_STATUS.available,
@@ -46,12 +54,6 @@ export function AssetsTable() {
   };
 
   const columns: ProColumns<Asset>[] = [
-    {
-      title: "Từ khóa",
-      dataIndex: "search",
-      hideInTable: true,
-      fieldProps: { placeholder: "Mã, serial, model…" },
-    },
     { title: "Mã tài sản", dataIndex: "assetTag", sorter: true, search: false },
     {
       title: "Danh mục",
@@ -62,14 +64,21 @@ export function AssetsTable() {
       render: (_, r) => r.category?.name ?? "—",
     },
     {
-      title: "Model",
-      dataIndex: "model",
-      search: false,
-      render: (_, r) =>
-        [r.model?.manufacturer, r.model?.modelName].filter(Boolean).join(" ") ||
-        "—",
+      title: "Thương hiệu",
+      dataIndex: "manufacturer",
+      valueType: "select",
+      request: manufacturerOptions,
+      fieldProps: { showSearch: true },
+      render: (_, r) => r.model?.manufacturer ?? "—",
     },
-    { title: "Serial", dataIndex: "serialNumber", search: false },
+    {
+      title: "Model",
+      dataIndex: "modelId",
+      valueType: "select",
+      request: modelOptions,
+      fieldProps: { showSearch: true },
+      render: (_, r) => r.model?.modelName ?? "—",
+    },
     {
       title: "Trạng thái",
       dataIndex: "status",
@@ -79,14 +88,6 @@ export function AssetsTable() {
       render: (_, r) => <StatusTag status={r.status} />,
     },
     {
-      title: "Vị trí",
-      dataIndex: "locationId",
-      valueType: "select",
-      request: locationOptions,
-      fieldProps: { showSearch: true },
-      render: (_, r) => r.location?.name ?? "—",
-    },
-    {
       title: "Người đang giữ",
       dataIndex: "employeeId",
       valueType: "select",
@@ -94,12 +95,33 @@ export function AssetsTable() {
       fieldProps: { showSearch: true },
       render: (_, r) => r.assignmentItems?.[0]?.batch.employee.fullName ?? "—",
     },
+    // Filter-only fields (not shown as columns).
     {
-      title: "Hết bảo hành",
-      dataIndex: "warrantyExpiry",
-      search: false,
-      sorter: true,
-      render: (_, r) => fmtDate(r.warrantyExpiry),
+      title: "Vị trí",
+      dataIndex: "locationId",
+      hideInTable: true,
+      valueType: "select",
+      request: locationOptions,
+      fieldProps: { showSearch: true },
+    },
+    {
+      title: "Bảo hành",
+      dataIndex: "warranty",
+      hideInTable: true,
+      valueType: "select",
+      valueEnum: WARRANTY_ENUM,
+    },
+    {
+      title: "Ngày mua",
+      dataIndex: "purchaseRange",
+      hideInTable: true,
+      valueType: "dateRange",
+      search: {
+        transform: ([purchaseFrom, purchaseTo]: [string, string]) => ({
+          purchaseFrom,
+          purchaseTo,
+        }),
+      },
     },
     {
       title: "Thao tác",
@@ -151,6 +173,17 @@ export function AssetsTable() {
         actionRef={actionRef}
         columns={columns}
         request={tableRequest(assetService.list)}
+        options={{
+          density: false,
+          setting: false,
+          reload: true,
+          search: {
+            name: "search",
+            placeholder: "Tìm mã, serial, model, người giữ…",
+            allowClear: true,
+            style: { width: 300 },
+          },
+        }}
         toolBarRender={() => [
           <Button
             key="add"

@@ -8,63 +8,75 @@ import {
   ProFormGroup,
   ProFormList,
   ProFormSelect,
-  ProFormSwitch,
   ProFormText,
   ProFormTextArea,
 } from "@ant-design/pro-components";
+import { Divider } from "antd";
 import dayjs from "dayjs";
+import { Cpu } from "lucide-react";
+import { useState } from "react";
 import { useAction } from "@/hooks/useAction";
 import { ASSET_STATUS } from "@/lib/constants";
-import { assetService, type AssetInput } from "@/services/assets";
+import {
+  assetService,
+  type AssetInput,
+  type PcConfigurationInput,
+} from "@/services/assets";
 import {
   categoryOptions,
   locationOptions,
   modelOptions,
+  pcComponentOptions,
 } from "@/services/options";
 import type { Asset } from "@/types";
 
 type FormValues = Omit<AssetInput, "pcConfiguration"> & {
-  hasPc?: boolean;
-  pc?: {
-    cpu?: string;
-    gpu?: string;
-    ramGb?: number;
-    mainboard?: string;
-    storageDevices?: { storageType: string; capacityGb: number; label?: string }[];
-  };
+  pc?: PcConfigurationInput;
 };
 
-const MANUAL_STATUSES = (["available", "maintenance", "broken", "retired"] as const).map(
-  (s) => ({ value: s, label: ASSET_STATUS[s].label }),
-);
+const MANUAL_STATUSES = (
+  ["available", "maintenance", "broken", "retired"] as const
+).map((s) => ({ value: s, label: ASSET_STATUS[s].label }));
 
-const toInitial = (asset: Asset): Partial<FormValues> => ({
-  assetTag: asset.assetTag,
-  categoryId: asset.categoryId,
-  modelId: asset.modelId ?? undefined,
-  locationId: asset.locationId ?? undefined,
-  serialNumber: asset.serialNumber ?? undefined,
-  purchaseDate: asset.purchaseDate ? (dayjs(asset.purchaseDate) as never) : undefined,
-  warrantyExpiry: asset.warrantyExpiry
-    ? (dayjs(asset.warrantyExpiry) as never)
-    : undefined,
-  purchasePrice: asset.purchasePrice ?? undefined,
-  notes: asset.notes ?? undefined,
-  hasPc: !!asset.pcConfiguration,
-  pc: asset.pcConfiguration
-    ? {
-        cpu: asset.pcConfiguration.cpu ?? undefined,
-        gpu: asset.pcConfiguration.gpu ?? undefined,
-        ramGb: asset.pcConfiguration.ramGb ?? undefined,
-        mainboard: asset.pcConfiguration.mainboard ?? undefined,
-        storageDevices: asset.pcConfiguration.storageDevices.map((s) => ({
-          storageType: s.storageType,
-          capacityGb: s.capacityGb,
-          label: s.label ?? undefined,
-        })),
-      }
-    : undefined,
-});
+// Loaders are created once so ProFormSelect does not refetch on every render.
+const cpuOptions = pcComponentOptions("cpu");
+const gpuOptions = pcComponentOptions("gpu");
+const ramOptions = pcComponentOptions("ram");
+const mainboardOptions = pcComponentOptions("mainboard");
+const storageOptions = pcComponentOptions("storage");
+
+const toInitial = (asset: Asset): Partial<FormValues> => {
+  const pc = asset.pcConfiguration;
+  return {
+    assetTag: asset.assetTag,
+    categoryId: asset.categoryId,
+    modelId: asset.modelId ?? undefined,
+    locationId: asset.locationId ?? undefined,
+    serialNumber: asset.serialNumber ?? undefined,
+    purchaseDate: asset.purchaseDate
+      ? (dayjs(asset.purchaseDate) as never)
+      : undefined,
+    warrantyExpiry: asset.warrantyExpiry
+      ? (dayjs(asset.warrantyExpiry) as never)
+      : undefined,
+    purchasePrice: asset.purchasePrice ?? undefined,
+    notes: asset.notes ?? undefined,
+    pc: pc
+      ? {
+          cpuId: pc.cpuId ?? undefined,
+          gpuId: pc.gpuId ?? undefined,
+          ramId: pc.ramId ?? undefined,
+          mainboardId: pc.mainboardId ?? undefined,
+          storageDevices: pc.storageDevices
+            .filter((s) => s.componentId)
+            .map((s) => ({
+              componentId: s.componentId!,
+              label: s.label ?? undefined,
+            })),
+        }
+      : undefined,
+  };
+};
 
 export function AssetFormModal({
   open,
@@ -73,24 +85,31 @@ export function AssetFormModal({
   onSaved,
 }: {
   open: boolean;
-  /** Asset (with pcConfiguration loaded) to edit; null to create. */
+  /** Asset (with category and pcConfiguration loaded) to edit; null to create. */
   asset: Asset | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const run = useAction();
+  // Whether the chosen category carries a PC configuration.
+  const [isPc, setIsPc] = useState(!!asset?.category?.hasPcConfig);
+  const [prevAsset, setPrevAsset] = useState(asset);
+  if (asset !== prevAsset) {
+    setPrevAsset(asset);
+    setIsPc(!!asset?.category?.hasPcConfig);
+  }
 
   return (
     <ModalForm<FormValues>
       title={asset ? `Sửa tài sản ${asset.assetTag}` : "Thêm tài sản"}
-      width={720}
+      width={760}
       open={open}
       initialValues={asset ? toInitial(asset) : { status: "available" }}
       modalProps={{ destroyOnHidden: true, onCancel: onClose }}
       onOpenChange={(o) => !o && onClose()}
       grid
       rowProps={{ gutter: 16 }}
-      onFinish={async ({ hasPc, pc, ...values }) => {
+      onFinish={async ({ pc, ...values }) => {
         const body: AssetInput = {
           ...values,
           modelId: values.modelId ?? null,
@@ -101,10 +120,20 @@ export function AssetFormModal({
           purchasePrice: values.purchasePrice ?? null,
           notes: values.notes || null,
         };
-        const pcBody = hasPc ? pc : undefined;
+        const pcBody: PcConfigurationInput | undefined = isPc
+          ? {
+              cpuId: pc?.cpuId ?? null,
+              gpuId: pc?.gpuId ?? null,
+              ramId: pc?.ramId ?? null,
+              mainboardId: pc?.mainboardId ?? null,
+              storageDevices: (pc?.storageDevices ?? []).filter(
+                (s) => s?.componentId,
+              ),
+            }
+          : undefined;
         const r = await run(async () => {
           if (!asset) {
-            return assetService.create({ ...body, pcConfiguration: pcBody ?? undefined });
+            return assetService.create({ ...body, pcConfiguration: pcBody });
           }
           const update = { ...body };
           delete update.status;
@@ -121,7 +150,11 @@ export function AssetFormModal({
         colProps={{ span: 12 }}
         rules={[{ required: true, message: "Nhập mã tài sản" }]}
       />
-      <ProFormText name="serialNumber" label="Số serial" colProps={{ span: 12 }} />
+      <ProFormText
+        name="serialNumber"
+        label="Số serial"
+        colProps={{ span: 12 }}
+      />
       <ProFormSelect
         name="categoryId"
         label="Danh mục"
@@ -129,6 +162,12 @@ export function AssetFormModal({
         request={categoryOptions}
         showSearch
         rules={[{ required: true, message: "Chọn danh mục" }]}
+        fieldProps={{
+          onChange: (_: unknown, option: unknown) =>
+            setIsPc(
+              !!(option as { hasPcConfig?: boolean } | undefined)?.hasPcConfig,
+            ),
+        }}
       />
       <ProFormDependency name={["categoryId"]}>
         {({ categoryId }) => (
@@ -160,7 +199,11 @@ export function AssetFormModal({
           allowClear={false}
         />
       )}
-      <ProFormDatePicker name="purchaseDate" label="Ngày mua" colProps={{ span: 8 }} />
+      <ProFormDatePicker
+        name="purchaseDate"
+        label="Ngày mua"
+        colProps={{ span: 8 }}
+      />
       <ProFormDatePicker
         name="warrantyExpiry"
         label="Hết hạn bảo hành"
@@ -174,56 +217,70 @@ export function AssetFormModal({
         fieldProps={{ precision: 0 }}
       />
       <ProFormTextArea name="notes" label="Ghi chú" colProps={{ span: 24 }} />
-      <ProFormSwitch
-        name="hasPc"
-        label="Có cấu hình phần cứng (PC/Laptop)"
-        colProps={{ span: 24 }}
-      />
-      <ProFormDependency name={["hasPc"]}>
-        {({ hasPc }) =>
-          hasPc ? (
-            <ProFormGroup colProps={{ span: 24 }} title="Cấu hình PC">
-              <ProFormText name={["pc", "cpu"]} label="CPU" colProps={{ span: 12 }} />
-              <ProFormText name={["pc", "gpu"]} label="GPU" colProps={{ span: 12 }} />
-              <ProFormDigit
-                name={["pc", "ramGb"]}
-                label="RAM (GB)"
-                colProps={{ span: 12 }}
-                min={0}
+
+      {isPc && (
+        <>
+          <Divider titlePlacement="start" style={{ margin: "4px 0 16px" }}>
+            <Cpu size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
+            Cấu hình PC
+          </Divider>
+          <ProFormSelect
+            name={["pc", "cpuId"]}
+            label="CPU"
+            colProps={{ span: 12 }}
+            request={cpuOptions}
+            showSearch
+            allowClear
+          />
+          <ProFormSelect
+            name={["pc", "gpuId"]}
+            label="GPU"
+            colProps={{ span: 12 }}
+            request={gpuOptions}
+            showSearch
+            allowClear
+          />
+          <ProFormSelect
+            name={["pc", "ramId"]}
+            label="RAM"
+            colProps={{ span: 12 }}
+            request={ramOptions}
+            showSearch
+            allowClear
+          />
+          <ProFormSelect
+            name={["pc", "mainboardId"]}
+            label="Mainboard"
+            colProps={{ span: 12 }}
+            request={mainboardOptions}
+            showSearch
+            allowClear
+          />
+          <ProFormList
+            name={["pc", "storageDevices"]}
+            label="Ổ lưu trữ"
+            colProps={{ span: 24 }}
+            creatorButtonProps={{ creatorButtonText: "Thêm ổ lưu trữ" }}
+            copyIconProps={false}
+          >
+            <ProFormGroup key="storage">
+              <ProFormSelect
+                name="componentId"
+                placeholder="Chọn ổ (SSD, HDD…)"
+                width="md"
+                request={storageOptions}
+                showSearch
+                rules={[{ required: true, message: "Chọn ổ lưu trữ" }]}
               />
               <ProFormText
-                name={["pc", "mainboard"]}
-                label="Mainboard"
-                colProps={{ span: 12 }}
+                name="label"
+                placeholder="Nhãn (C:, Data…)"
+                width="xs"
               />
-              <ProFormList
-                name={["pc", "storageDevices"]}
-                label="Ổ lưu trữ"
-                creatorButtonProps={{ creatorButtonText: "Thêm ổ lưu trữ" }}
-                copyIconProps={false}
-              >
-                <ProFormGroup key="storage">
-                  <ProFormText
-                    name="storageType"
-                    label="Loại"
-                    placeholder="SSD, HDD, NVMe…"
-                    width="xs"
-                    rules={[{ required: true }]}
-                  />
-                  <ProFormDigit
-                    name="capacityGb"
-                    label="Dung lượng (GB)"
-                    min={1}
-                    width="xs"
-                    rules={[{ required: true }]}
-                  />
-                  <ProFormText name="label" label="Nhãn" width="xs" />
-                </ProFormGroup>
-              </ProFormList>
             </ProFormGroup>
-          ) : null
-        }
-      </ProFormDependency>
+          </ProFormList>
+        </>
+      )}
     </ModalForm>
   );
 }

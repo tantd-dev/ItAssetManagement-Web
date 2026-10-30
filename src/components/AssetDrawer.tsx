@@ -5,7 +5,13 @@ import { useEffect, useState } from "react";
 import { DataTable } from "@/components/DataTable";
 import { StatusTag } from "@/components/StatusTag";
 import { describeEvent, eventLabel } from "@/lib/events";
-import { fmtDate, fmtDateTime, fmtMoney } from "@/lib/format";
+import {
+  fmtCapacity,
+  fmtDate,
+  fmtDateTime,
+  fmtMoney,
+  pcComponentLabel,
+} from "@/lib/format";
 import { tableRequest } from "@/lib/table";
 import { assetService } from "@/services/assets";
 import { historyService } from "@/services/history";
@@ -54,13 +60,21 @@ function AssetInfo({ asset }: { asset: Asset }) {
           <Descriptions.Item label="CPU">{pc.cpu ?? "—"}</Descriptions.Item>
           <Descriptions.Item label="GPU">{pc.gpu ?? "—"}</Descriptions.Item>
           <Descriptions.Item label="RAM">
-            {pc.ramGb ? `${pc.ramGb} GB` : "—"}
+            {pc.ramComponent
+              ? pcComponentLabel(pc.ramComponent)
+              : fmtCapacity(pc.ramGb)}
           </Descriptions.Item>
           <Descriptions.Item label="Mainboard">{pc.mainboard ?? "—"}</Descriptions.Item>
           <Descriptions.Item label="Ổ lưu trữ" span={2}>
             {pc.storageDevices.length
               ? pc.storageDevices
-                  .map((s) => `${s.storageType} ${s.capacityGb} GB${s.label ? ` (${s.label})` : ""}`)
+                  .map(
+                    (s) =>
+                      (s.component
+                        ? pcComponentLabel(s.component)
+                        : `${s.storageType} ${fmtCapacity(s.capacityGb)}`) +
+                      (s.label ? ` (${s.label})` : ""),
+                  )
                   .join(" · ")
               : "—"}
           </Descriptions.Item>
